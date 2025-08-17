@@ -42,6 +42,10 @@
     #controls button:hover {
       background: #005ac1;
     }
+    #controls select {
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
     #map { flex: 1; }
     .leaflet-control-zoom { background: #fff; border-radius: 6px; }
   </style>
@@ -51,6 +55,9 @@
     <input type="text" id="start" placeholder="Zone de départ" />
     <input type="text" id="end" placeholder="Zone d'arrivée" />
     <button id="applyBtn">Chercher itinéraire</button>
+    <select id="savedRoutes">
+      <option value="">--Itinéraire sauvegardé--</option>
+    </select>
   </div>
   <div id="map"></div>
 
@@ -66,6 +73,16 @@
 
     let routeLines = [];
     let markersGroup = L.layerGroup().addTo(map);
+    const savedRoutesSelect = document.getElementById("savedRoutes");
+
+    // Charger les itinéraires sauvegardés
+    const storedRoutes = JSON.parse(localStorage.getItem("savedRoutes") || "[]");
+    storedRoutes.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.text = r.name;
+      savedRoutesSelect.add(opt);
+    });
 
     document.getElementById("applyBtn").addEventListener("click", async () => {
       const startPlace = document.getElementById("start").value.trim();
@@ -93,6 +110,19 @@
           const line = L.polyline(coords, { color, weight: 5, opacity: 0.8, dashArray: "5,5" }).addTo(map);
           line.bindPopup(`<strong>Itinéraire ${idx + 1}</strong><br>Status : ${route.status.toUpperCase()}<br>Distance : ${(route.distance/1000).toFixed(2)} km`);
           routeLines.push(line);
+
+          // Sauvegarder itinéraire pour consultation hors connexion
+          const routeId = `${startPlace}_${endPlace}_${idx}`;
+          const routeObj = { id: routeId, name: `Itinéraire ${idx + 1}`, coords };
+          let stored = JSON.parse(localStorage.getItem("savedRoutes") || "[]");
+          if (!stored.find(r => r.id === routeId)) {
+            stored.push(routeObj);
+            localStorage.setItem("savedRoutes", JSON.stringify(stored));
+            const opt = document.createElement("option");
+            opt.value = routeId;
+            opt.text = `Itinéraire ${idx + 1}`;
+            savedRoutesSelect.add(opt);
+          }
         });
 
         if (routeLines.length > 0) map.fitBounds(routeLines[0].getBounds());
@@ -104,6 +134,24 @@
         alert("Erreur lors de la récupération des données");
         console.error(e);
       }
+    });
+
+    // Afficher itinéraire sauvegardé
+    savedRoutesSelect.addEventListener("change", () => {
+      const routeId = savedRoutesSelect.value;
+      if (!routeId) return;
+      const stored = JSON.parse(localStorage.getItem("savedRoutes") || "[]");
+      const route = stored.find(r => r.id === routeId);
+      if (!route) return;
+
+      // Supprimer lignes existantes
+      routeLines.forEach(line => map.removeLayer(line));
+      routeLines = [];
+
+      // Afficher uniquement la route sélectionnée
+      const line = L.polyline(route.coords, { color: "#28a745", weight: 5, opacity: 0.8, dashArray: "5,5" }).addTo(map);
+      routeLines.push(line);
+      map.fitBounds(line.getBounds());
     });
   </script>
 </body>
