@@ -62,6 +62,8 @@
   <div id="map"></div>
 
   <script>
+    localStorage.removeItem("savedRoutes"); // Efface les itinéraires sauvegardés au reload
+
     const backendUrl = "https://womanalert-production.up.railway.app";
 
     const map = L.map('map', { zoomControl: false }).setView([33.566, -7.673], 12);
